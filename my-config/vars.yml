@@ -1,10 +1,10 @@
 ---
+matrix_playbook_migration_validated_version: v2026.03.23.0
 my_ip: "{{ vault_my_ip }}"
 your_proxy_http_proxy: "http://172.17.0.1:10809"
-your_proxy_no_proxy: "localhost,127.0.0.1,{{ matrix_domain }},.{{ matrix_domain }},matrix-synapse,matrix-authentication-service,matrix-postgres,matrix-exim-relay,172.16.0.0/12"
+your_proxy_no_proxy: "localhost,127.0.0.1,{{ matrix_domain }},.{{ matrix_domain }},matrix-synapse,matrix-mautrix-discord,matrix-media-repo,matrix-authentication-service,matrix-postgres,matrix-exim-relay,172.16.0.0/12"
 
 matrix_synapse_container_extra_arguments:
-  - "--add-host={{ ntfy_hostname }}:host-gateway"
   - "--env"
   - "http_proxy={{ your_proxy_http_proxy }}"
   - "--env"
@@ -30,7 +30,6 @@ coturn_hostname: "turn.{{ matrix_domain }}"
 matrix_element_call_hostname: "call.{{ matrix_domain }}"
 matrix_element_admin_hostname: "admin-matrix.{{ matrix_domain }}"
 matrix_server_fqn_element: "element.{{ matrix_domain }}"
-ntfy_hostname: "push.{{ matrix_domain }}"
 # Keys
 matrix_homeserver_generic_secret_key: "{{ vault_matrix_homeserver_generic_secret_key }}"
 postgres_connection_password: "{{ vault_postgres_connection_password }}"
@@ -38,20 +37,12 @@ matrix_synapse_macaroon_secret_key: "{{ vault_matrix_synapse_macaroon_secret_key
 matrix_synapse_form_secret: "{{ vault_matrix_synapse_form_secret }}"
 matrix_homeserver_implementation: synapse
 
-# Registration (now deprecated)
-matrix_synapse_enable_registration: false
-matrix_synapse_enable_registration_captcha: false
-# matrix_synapse_recaptcha_public_key: "{{ vault_matrix_synapse_recaptcha_public_key }}"
-# matrix_synapse_recaptcha_private_key: "{{ vault_matrix_synapse_recaptcha_private_key }}"
-matrix_synapse_registration_requires_token: false
-matrix_synapse_email_enabled: false
-
 # Federation
 matrix_synapse_federation_enabled: true
 matrix_synapse_allow_public_rooms_over_federation: true
 matrix_synapse_allow_public_rooms_without_auth: false
 matrix_synapse_limit_remote_rooms_enabled: true
-matrix_synapse_limit_remote_rooms_complexity: 17.0
+matrix_synapse_limit_remote_rooms_complexity: 20.0
 matrix_synapse_limit_remote_rooms_complexity_error: "{{ vault_complexity_error_message }}"
 matrix_synapse_limit_remote_rooms_admins_can_join: true
 matrix_synapse_presence_enabled: true
@@ -61,7 +52,7 @@ matrix_synapse_report_stats: false
 matrix_synapse_configuration_extension_yaml: |
   auto_join_rooms:
     - "#general:{{ matrix_domain }}"
-    - "#GeneralRoom:{{ matrix_domain }}"
+    - "#welcome:{{ matrix_domain }}"
   ip_range_whitelist:
     - "172.16.0.0/12"
     - "10.0.0.0/8"
@@ -81,26 +72,8 @@ matrix_element_call_enabled: true
 matrix_client_element_jitsi_preferred: false
 matrix_client_element_voip_conference_type: "livekit"
 livekit_server_config_turn_external_tls: true
-# livekit_server_configuration_extension_yaml: |
-#   rtc:
-#     force_tcp: true
-
 livekit_rtc_use_external_ip: true
 livekit_rtc_external_ip: "{{ my_ip }}"
-
-# Notifications
-ntfy_enabled: true
-ntfy_container_extra_arguments:
-  - "--env"
-  - "http_proxy={{ your_proxy_http_proxy }}"
-  - "--env"
-  - "https_proxy={{ your_proxy_http_proxy }}"
-  - "--env"
-  - "no_proxy={{ your_proxy_no_proxy }}"
-  - "--dns"
-  - "127.0.0.11"
-matrix_synapse_container_extra_hosts:
-  - "{{ ntfy_hostname }}:host-gateway"
 
 # Admin panel 
 matrix_element_admin_enabled: true
@@ -149,41 +122,47 @@ traefik_config_entrypoint_web_proxy_trusted_ips:
 # IPv6
 devture_systemd_docker_base_ipv6_enabled: true
 
+
+
+
+
+###########################################################################################
+#                                       STORAGE
+###########################################################################################
+
 matrix_base_data_path: "{{ vault_matrix_base_data_path }}"
 
-# matrix_media_repo
-matrix_media_repo_enabled: true
-matrix_media_repo_datastore_file_id: "{{ vault_matrix_media_repo_datastore_file_id }}"
-matrix_media_repo_admins: "{{ vault_admin_users }}"
-matrix_media_repo_database_max_connections: 50
-matrix_media_repo_database_max_idle_connections: 5
-matrix_media_repo_datastore_file_for_kinds: ["thumbnails", "remote_media", "local_media", "archives"]
-matrix_media_repo_datastore_s3_for_kinds: []
-matrix_media_repo_generate_signing_key: true
-matrix_media_repo_archiving_enabled: true
-matrix_media_repo_archiving_self_service: false
-matrix_media_repo_archiving_target_bytes_per_part: 4294967296
-matrix_media_repo_max_bytes: 8589934592
-matrix_media_repo_reported_max_bytes: 8589934592
-matrix_media_repo_max_pending: 10
-matrix_media_repo_max_age_seconds: 86400
-# Settings related to downloading files from the media repository
-matrix_media_repo_downloads_max_bytes: 2147483648
-matrix_media_repo_downloads_num_workers: 10
-matrix_media_repo_downloads_failure_cache_minutes: 5
-matrix_media_repo_downloads_expire_after_days: 30
-matrix_media_repo_downloads_default_range_chunk_size_bytes: 10485760
-# URL Preview settings
-matrix_media_repo_url_previews_enabled: true
-matrix_media_repo_url_previews_max_page_size_bytes: 10485760
-matrix_media_repo_url_previews_num_words: 50
-matrix_media_repo_url_previews_max_length: 200
-matrix_media_repo_url_previews_num_title_words: 30
-matrix_media_repo_url_previews_max_title_length: 150
-matrix_media_repo_url_previews_file_preview_types:
-  - "image/*"
-matrix_media_repo_url_previews_num_workers: 10
-matrix_media_repo_url_previews_disallowed_networks:
+matrix_synapse_max_upload_size_mb: 8192
+# Retentions (media)
+# should be empty to disable
+matrix_synapse_media_retention_local_media_lifetime: 
+# should be empty to disable
+matrix_synapse_media_retention_remote_media_lifetime: 30d
+
+###########################################################################################
+#                                       CACHE
+###########################################################################################
+
+# synapse content caching
+matrix_synapse_reverse_proxy_companion_synapse_cache_enabled: true
+matrix_synapse_reverse_proxy_companion_synapse_cache_keys_zone_size: "10m"
+matrix_synapse_reverse_proxy_companion_synapse_cache_inactive_time: "48h"
+matrix_synapse_reverse_proxy_companion_synapse_cache_max_size_mb: 2048
+matrix_synapse_reverse_proxy_companion_synapse_cache_proxy_cache_valid_time: "24h"
+
+# Retentions (messages)
+matrix_synapse_retention_enabled: false
+matrix_synapse_retention_period: "730d"
+matrix_synapse_retention_purge_jobs:
+  - interval: "24h"
+    shortest_max_lifetime: "1d"
+    longest_max_lifetime: "730d"
+# Retentions (rooms)
+matrix_synapse_forget_rooms_on_leave: true
+matrix_synapse_forgotten_room_retention_period: 6h
+# URL preview
+matrix_synapse_url_preview_enabled: true
+matrix_synapse_url_preview_ip_range_blacklist:
   - '127.0.0.0/8'
   - '10.0.0.0/8'
   - '172.16.0.0/12'
@@ -203,71 +182,22 @@ matrix_media_repo_url_previews_disallowed_networks:
   - '2001:db8::/32'
   - 'ff00::/8'
   - 'fec0::/10'
-matrix_media_repo_url_previews_expire_after_days: 45
-matrix_media_repo_url_previews_default_language: "{{ vault_matrix_media_repo_url_previews_default_language }}"
-matrix_media_repo_url_previews_user_agent: "matrix-bot"
-# The thumbnail configuration for the media repository.
-matrix_media_repo_thumbnails_max_source_bytes: 104857600
-matrix_media_repo_thumbnails_max_pixels: 64000000
-matrix_media_repo_thumbnails_num_workers: 100
-matrix_media_repo_thumbnails_sizes:
-  - width: 32
-    height: 32
-  - width: 96
-    height: 96
-  - width: 320
-    height: 240
-  - width: 640
-    height: 480
-  - width: 768
-    height: 240
-  - width: 800
-    height: 600
-  - width: 480
-    height: 800
-matrix_media_repo_thumbnails_types:
-  - "image/jpeg"
-  - "image/jpg"
-  - "image/png"
-  - "image/apng"
-  - "image/gif"
-  - "image/heif"
-  - "image/heic"
-  - "image/webp"
-  - "image/bmp"
-  - "image/tiff"
-  - "audio/mpeg"
-  - "audio/ogg"
-  - "audio/wav"
-  - "audio/flac"
-  - video/mp4
-  - video/quicktime
-  - video/webm
-matrix_media_repo_thumbnails_allow_animated: true
-matrix_media_repo_thumbnails_max_animate_size_bytes: 20971520
-matrix_media_repo_thumbnails_expire_after_days: 180
-# Controls for the rate limit functionality
-matrix_media_repo_rate_limit_enabled: true
-matrix_media_repo_rate_limit_requests_per_second: 5
-matrix_media_repo_rate_limit_burst: 25
-matrix_media_repo_rate_limit_buckets_download_capacity_bytes: 10737418240
-matrix_media_repo_rate_limit_buckets_download_drain_bytes_per_minute: 1073741824
-matrix_media_repo_rate_limit_buckets_download_overflow_limit_bytes: 3221225472
-# Retentions (now deprecated)
-matrix_synapse_retention_enabled: false
-matrix_synapse_retention_period: "730d"
-matrix_synapse_retention_purge_jobs:
-  - interval: "24h"
-    shortest_max_lifetime: "1d"
-    longest_max_lifetime: "730d"
-matrix_synapse_forget_rooms_on_leave: true
-matrix_synapse_forgotten_room_retention_period: 36h
+matrix_url_preview_accept_language: "{{ vault_matrix_url_previews_default_language }}"
+
+###########################################################################################
+#                                      SERVER NOTICES
+###########################################################################################
 
 # Server notices
 matrix_synapse_server_notices_enabled: true
+# If true, users will be automatically joined to the server notices room instead of being invited.
+matrix_synapse_server_notices_auto_join: true
 matrix_synapse_server_notices_system_mxid_localpart: "notices"
 matrix_synapse_server_notices_system_mxid_display_name: "{{ vault_matrix_synapse_server_notices_system_mxid_display_name }}"
+matrix_synapse_server_notices_system_mxid_avatar_url: "{{ vault_synapse_notices_avatar }}"
 matrix_synapse_server_notices_room_name: "{{ vault_matrix_synapse_server_notices_room_name }}"
+matrix_synapse_server_notices_room_avatar_url: "{{ vault_synapse_notices_avatar }}"
+matrix_synapse_server_notices_room_topic:
 
 ###########################################################################################
 #                                       SMTP
@@ -319,11 +249,41 @@ matrix_bot_matrix_reminder_bot_matrix_user_password: "{{ vault_matrix_bot_matrix
 matrix_bot_matrix_reminder_bot_reminders_timezone: "{{ vault_timezone }}"
 
 
-
 ###########################################################################################
 #                                       BRIDGES
 ###########################################################################################
+matrix_appservice_double_puppet_enabled: true
+matrix_bridges_encryption_enabled: true
+matrix_bridges_encryption_default: "{{ matrix_bridges_encryption_enabled }}"
 
+# Discord
+matrix_mautrix_discord_enabled: true
+matrix_mautrix_discord_bridge_permissions: |
+  {{
+    {
+      '*': 'relay',
+      vault_discord_admin: 'admin',
+      vault_discord_user_1: 'admin',
+      vault_discord_user_2: 'user',
+      vault_discord_user_3: 'user',
+      vault_discord_user_4: 'user',
+      vault_discord_user_5: 'user'
+    }
+  }}
+matrix_mautrix_discord_federate_rooms: true
+matrix_mautrix_discord_bridge_encryption_plaintext_mentions: true
+matrix_mautrix_discord_appservice_address: "http://matrix-mautrix-discord:8080"
+matrix_mautrix_discord_appservice_bot_displayname: "DiscordBridge_bot"
+matrix_mautrix_discord_container_extra_arguments:
+  - "--env"
+  - "http_proxy={{ your_proxy_http_proxy }}"
+  - "--env"
+  - "https_proxy={{ your_proxy_http_proxy }}"
+  - "--env"
+  - "no_proxy={{ your_proxy_no_proxy }},matrix.{{ matrix_domain }}"
+  - "--dns"
+  - "127.0.0.11"
+matrix_mautrix_discord_appservice_bot_avatar: "{{ vault_mautrix_discord_bot_avatar }}"
 
 
 ###########################################################################################
@@ -333,7 +293,7 @@ matrix_bot_matrix_reminder_bot_reminders_timezone: "{{ vault_timezone }}"
 matrix_synapse_require_auth_for_profile_requests: true
 matrix_synapse_user_directory_prefer_local_users: true
 matrix_synapse_auto_accept_invites_enabled: true
-matrix_synapse_auto_accept_invites_only_for_direct_messages: true
+matrix_synapse_auto_accept_invites_only_for_direct_messages: false
 matrix_synapse_auto_accept_invites_only_from_local_users: true
 
 # Cache
@@ -353,3 +313,7 @@ matrix_synapse_cache_autotuning_max_cache_memory_usage: |-
       (matrix_synapse_cache_size_calculations_max_cache_memory_usage_cap_bytes | int),
     ] | min
   }}
+
+
+matrix_addons_homeserver_client_api_url: "http://matrix-synapse:8008"
+
